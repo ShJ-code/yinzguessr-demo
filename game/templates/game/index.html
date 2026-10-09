@@ -1,0 +1,97 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YinzGuessr</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap">
+
+  <link rel="stylesheet" href="{% static 'game/game.css' %}?v={{ asset_version }}">
+</head>
+<body data-screen="start">
+
+  <!-- Start -->
+  <main class="screen screen-start" id="screen-start" aria-labelledby="start-title">
+    <div class="start-inner">
+      <h1 class="wordmark" id="start-title">YinzGuessr</h1>
+      <p class="start-lede">
+        You'll be dropped onto a street somewhere in Pittsburgh.
+        Look around, walk if you need to, then pin where you think you are.
+      </p>
+      <p class="start-rules">{{ rounds_per_game }} rounds, up to {{ max_round_score }} points each.</p>
+      {% if google_maps_api_key %}
+        <button type="button" class="btn btn-gold btn-large" id="start-btn">Start game</button>
+      {% else %}
+        <div class="setup-note" role="alert">
+          <p><strong>Google Maps API key missing.</strong> Add <code>GOOGLE_MAPS_API_KEY=…</code> to the <code>.env</code> file next to <code>manage.py</code>, then restart the server.</p>
+        </div>
+      {% endif %}
+    </div>
+  </main>
+
+  <!-- Play -->
+  <header class="topbar" id="topbar">
+    <span class="topbar-mark">YinzGuessr</span>
+    <span class="topbar-round" id="round-label">Round 1 of {{ rounds_per_game }}</span>
+    <span class="topbar-score"><span id="score-label">0</span> pts</span>
+  </header>
+
+  <section class="screen screen-play" id="screen-play" aria-label="Street view and guess map">
+    <!-- Google sets position: relative on the element it draws into, so the
+         panorama gets an inner element and the outer one does the layout. -->
+    <div class="viewer"><div class="viewer-pano" id="viewer"></div></div>
+
+    <div class="guess-panel" id="guess-panel">
+      <div class="guess-map" id="guess-map" aria-label="Map of Pittsburgh. Click to place your guess."></div>
+      <button type="button" class="btn btn-gold btn-block" id="guess-btn" disabled>Place a pin on the map</button>
+    </div>
+
+    <div class="loading" id="loading" hidden>
+      <p class="loading-text" id="loading-text">Finding a street in Pittsburgh…</p>
+    </div>
+  </section>
+
+  <!-- Reveal -->
+  <section class="screen screen-reveal" id="screen-reveal" aria-labelledby="reveal-distance">
+    <div class="reveal-map" id="reveal-map"></div>
+    <div class="reveal-card">
+      <p class="reveal-distance" id="reveal-distance">0 m</p>
+      <p class="reveal-sub">from where you were</p>
+      <p class="reveal-points" id="reveal-points">+0 points</p>
+      <div class="legend">
+        <span class="legend-item"><span class="dot dot-guess"></span>Your guess</span>
+        <span class="legend-item"><span class="dot dot-answer"></span>Where you were</span>
+      </div>
+      <button type="button" class="btn btn-gold btn-block" id="next-btn">Next round</button>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <main class="screen screen-results" id="screen-results" aria-labelledby="results-title">
+    <div class="results-inner">
+      <h2 class="results-title" id="results-title">Final score</h2>
+      <p class="results-total"><span id="results-total">0</span></p>
+      <p class="results-max">out of <span id="results-max">0</span></p>
+      <table class="results-table">
+        <thead>
+          <tr><th scope="col">Round</th><th scope="col">Distance</th><th scope="col">Points</th></tr>
+        </thead>
+        <tbody id="results-rows"></tbody>
+      </table>
+      <button type="button" class="btn btn-gold btn-large" id="again-btn">Play again</button>
+    </div>
+  </main>
+
+  <!-- Errors -->
+  <div class="error-bar" id="error-bar" role="alert" hidden>
+    <p id="error-text"></p>
+    <button type="button" class="btn btn-quiet" id="retry-btn">Try again</button>
+  </div>
+
+  {{ client_config|json_script:"yg-config" }}
+  <script src="{% static 'game/game.js' %}?v={{ asset_version }}"></script>
+</body>
+</html>

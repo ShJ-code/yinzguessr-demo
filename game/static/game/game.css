@@ -1,0 +1,286 @@
+/* YinzGuessr demo: steel panels, bridge-gold accents. */
+
+:root {
+  --steel: #262A2F;
+  --steel-raised: #30353B;
+  --steel-line: #444B54;
+  --steel-glass: rgba(38, 42, 47, 0.92);
+  --gold: #F2B51C;
+  --gold-pressed: #D99E0B;
+  --ink-on-gold: #262A2F;
+  --text: #EEF0F2;
+  --muted: #A3ACB6;
+  --answer: #FFFFFF;
+  --alert: #E5534B;
+
+  --topbar-h: 52px;
+  --radius: 6px;
+  --font: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--steel);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 18px;
+  line-height: 1.4;
+  overflow: hidden;
+}
+
+/* --- screen switching (body[data-screen]) ---------------------------------- */
+
+.screen, .topbar { display: none; }
+body[data-screen="start"] .screen-start,
+body[data-screen="results"] .screen-results { display: grid; }
+body[data-screen="play"] .screen-play,
+body[data-screen="reveal"] .screen-play { display: block; }  /* stays under the reveal */
+body[data-screen="reveal"] .screen-reveal { display: grid; }
+body[data-screen="play"] .topbar,
+body[data-screen="reveal"] .topbar { display: flex; }
+
+/* --- buttons --------------------------------------------------------------- */
+
+.btn {
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  border: 0;
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  cursor: pointer;
+}
+.btn:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+.btn-gold { background: var(--gold); color: var(--ink-on-gold); }
+.btn-gold:hover:not(:disabled) { background: var(--gold-pressed); }
+.btn-gold:disabled { background: var(--steel-line); color: var(--muted); cursor: not-allowed; }
+.btn-large { font-size: 22px; padding: 14px 32px; }
+.btn-block { display: block; width: 100%; }
+.btn-quiet { background: transparent; color: var(--text); border: 1px solid var(--steel-line); }
+.btn-quiet:hover { border-color: var(--muted); }
+
+/* --- start ----------------------------------------------------------------- */
+
+.screen-start {
+  position: fixed;
+  inset: 0;
+  place-items: center;
+  padding: 24px 16px;
+}
+.start-inner { max-width: 600px; }
+.wordmark {
+  margin: 0 0 20px;
+  font-size: clamp(64px, 14vw, 128px);
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+  color: var(--gold);
+}
+.start-lede { margin: 0 0 8px; font-size: 24px; line-height: 1.3; max-width: 34em; }
+.start-rules { margin: 0 0 32px; color: var(--muted); }
+.setup-note {
+  border-left: 4px solid var(--alert);
+  background: var(--steel-raised);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+}
+.setup-note p { margin: 0; }
+code { font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; color: var(--gold); }
+
+/* --- top bar --------------------------------------------------------------- */
+
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--topbar-h);
+  z-index: 50;
+  align-items: center;
+  gap: 24px;
+  padding: 0 20px;
+  background: var(--steel);
+  border-bottom: 2px solid var(--gold);
+  font-size: 20px;
+}
+.topbar-mark { color: var(--gold); font-weight: 700; }
+.topbar-round { font-weight: 500; }
+.topbar-score { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* --- play: street viewer + corner map -------------------------------------- */
+
+.viewer {
+  position: fixed;
+  top: var(--topbar-h); left: 0; right: 0; bottom: 0;
+  background: #1D2024;
+}
+.viewer-pano { width: 100%; height: 100%; }
+
+.guess-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 32px;
+  z-index: 20;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  transition: width 180ms ease;
+}
+.guess-map {
+  height: 220px;
+  border: 2px solid var(--gold);
+  border-radius: var(--radius);
+  overflow: hidden;
+  opacity: 0.85;
+  transition: height 180ms ease, opacity 180ms ease;
+}
+.guess-panel:hover,
+.guess-panel:focus-within { width: 640px; }
+.guess-panel:hover .guess-map,
+.guess-panel:focus-within .guess-map {
+  height: min(440px, calc(100vh - var(--topbar-h) - 120px));
+  opacity: 1;
+}
+.guess-panel .btn { margin-top: 8px; }
+
+.loading {
+  position: fixed;
+  top: var(--topbar-h); left: 0; right: 0; bottom: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: var(--steel-glass);
+}
+.loading-text { margin: 0; font-size: 28px; font-weight: 500; }
+.loading-text::after {
+  content: "";
+  display: block;
+  width: 160px;
+  height: 4px;
+  margin: 16px auto 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent 0 30%, var(--gold) 30% 70%, transparent 70%) 0 0 / 200% 100%;
+  animation: loading-slide 1.1s linear infinite;
+}
+@keyframes loading-slide { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* --- map pins (Google AdvancedMarkerElement content) ------------------------ */
+
+/* Google anchors marker content at its bottom centre; shift the dot down by
+   half its height so its centre sits exactly on the clicked spot. */
+.pin {
+  transform: translateY(50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid var(--steel);
+  box-shadow: 0 0 0 2px var(--answer);
+}
+.pin-guess { background: var(--gold); }
+.pin-answer { background: var(--answer); box-shadow: 0 0 0 2px var(--gold); }
+
+/* --- reveal ---------------------------------------------------------------- */
+
+.screen-reveal {
+  position: fixed;
+  top: var(--topbar-h); left: 0; right: 0; bottom: 0;
+  z-index: 40;
+  grid-template-columns: 1fr 360px;
+  background: var(--steel);
+}
+.reveal-map { min-height: 0; }
+.reveal-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 32px;
+  border-left: 1px solid var(--steel-line);
+}
+.reveal-distance {
+  margin: 0;
+  font-size: 80px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.reveal-sub { margin: 6px 0 0; font-size: 22px; color: var(--muted); }
+.reveal-points { margin: 16px 0 24px; font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 32px; color: var(--muted); }
+.legend-item { display: inline-flex; align-items: center; gap: 8px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--steel); }
+.dot-guess { background: var(--gold); box-shadow: 0 0 0 1.5px var(--answer); }
+.dot-answer { background: var(--answer); box-shadow: 0 0 0 1.5px var(--gold); }
+
+/* --- results --------------------------------------------------------------- */
+
+.screen-results {
+  position: fixed;
+  inset: 0;
+  place-items: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+.results-inner { width: min(520px, 100%); }
+.results-title { margin: 0; font-size: 22px; font-weight: 500; color: var(--muted); }
+.results-total {
+  margin: 4px 0 0;
+  font-size: clamp(72px, 16vw, 120px);
+  font-weight: 700;
+  line-height: 0.95;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.results-max { margin: 4px 0 32px; font-size: 22px; }
+.results-table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-variant-numeric: tabular-nums; }
+.results-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--steel-line);
+}
+.results-table td { padding: 12px 0; border-bottom: 1px solid var(--steel-line); font-size: 20px; }
+.results-table th:not(:first-child),
+.results-table td:not(:first-child) { text-align: right; }
+
+/* --- errors ---------------------------------------------------------------- */
+
+.error-bar {
+  position: fixed;
+  top: calc(var(--topbar-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 16px;
+  background: var(--steel-raised);
+  border-left: 4px solid var(--alert);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+.error-bar p { margin: 0; }
+
+/* --- small screens --------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .topbar { gap: 14px; font-size: 18px; padding: 0 14px; }
+  .topbar-mark { display: none; }
+  .guess-panel { width: calc(100vw - 32px); }
+  .guess-map { height: 160px; }
+  .guess-panel:hover, .guess-panel:focus-within { width: calc(100vw - 32px); }
+  .screen-reveal { grid-template-columns: 1fr; grid-template-rows: 55% auto; }
+  .reveal-card { border-left: 0; border-top: 1px solid var(--steel-line); padding: 20px 16px; justify-content: flex-start; }
+  .reveal-distance { font-size: 56px; }
+  .reveal-points { margin: 8px 0 12px; font-size: 24px; }
+  .legend { margin-bottom: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
